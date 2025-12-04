@@ -28,7 +28,7 @@ jobs:
     - name: Run unit tests
       run: |
         cd tests
-        pytest test_handlers.py -v --cov=../api --cov=../worker
+        pytest test_core.py -v --cov=. --cov-report=term-missing
     
     - name: Lint Python code
       run: |
