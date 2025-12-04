@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -15,7 +15,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Project     = "robust-data-processor"
@@ -46,10 +46,10 @@ variable "project_name" {
 
 # DynamoDB Table for processed logs
 resource "aws_dynamodb_table" "processed_logs" {
-  name           = "${var.project_name}-processed-logs"
-  billing_mode   = "PAY_PER_REQUEST"  # On-demand pricing for auto-scaling
-  hash_key       = "tenant_id"
-  range_key      = "log_id"
+  name         = "${var.project_name}-processed-logs"
+  billing_mode = "PAY_PER_REQUEST" # On-demand pricing for auto-scaling
+  hash_key     = "tenant_id"
+  range_key    = "log_id"
 
   attribute {
     name = "tenant_id"
@@ -69,10 +69,10 @@ resource "aws_dynamodb_table" "processed_logs" {
 # SQS Queue for message processing
 resource "aws_sqs_queue" "processing_queue" {
   name                       = "${var.project_name}-processing-queue"
-  visibility_timeout_seconds = 900  # 15 minutes (6x max processing time)
-  message_retention_seconds  = 1209600  # 14 days
-  receive_wait_time_seconds  = 20  # Long polling
-  
+  visibility_timeout_seconds = 900     # 15 minutes (6x max processing time)
+  message_retention_seconds  = 1209600 # 14 days
+  receive_wait_time_seconds  = 20      # Long polling
+
   # Enable DLQ
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.dead_letter_queue.arn
@@ -87,7 +87,7 @@ resource "aws_sqs_queue" "processing_queue" {
 # Dead Letter Queue
 resource "aws_sqs_queue" "dead_letter_queue" {
   name                      = "${var.project_name}-dlq"
-  message_retention_seconds = 1209600  # 14 days
+  message_retention_seconds = 1209600 # 14 days
 
   tags = {
     Name = "${var.project_name}-dlq"
@@ -204,12 +204,12 @@ data "archive_file" "api_lambda_zip" {
 resource "aws_lambda_function" "api_lambda" {
   filename         = data.archive_file.api_lambda_zip.output_path
   function_name    = "${var.project_name}-api"
-  role            = aws_iam_role.api_lambda_role.arn
-  handler         = "handler.lambda_handler"
+  role             = aws_iam_role.api_lambda_role.arn
+  handler          = "handler.lambda_handler"
   source_code_hash = data.archive_file.api_lambda_zip.output_base64sha256
-  runtime         = "python3.11"
-  timeout         = 30
-  memory_size     = 512
+  runtime          = "python3.11"
+  timeout          = 30
+  memory_size      = 512
 
   environment {
     variables = {
@@ -239,12 +239,12 @@ data "archive_file" "worker_lambda_zip" {
 resource "aws_lambda_function" "worker_lambda" {
   filename         = data.archive_file.worker_lambda_zip.output_path
   function_name    = "${var.project_name}-worker"
-  role            = aws_iam_role.worker_lambda_role.arn
-  handler         = "handler.lambda_handler"
+  role             = aws_iam_role.worker_lambda_role.arn
+  handler          = "handler.lambda_handler"
   source_code_hash = data.archive_file.worker_lambda_zip.output_base64sha256
-  runtime         = "python3.11"
-  timeout         = 900  # 15 minutes max
-  memory_size     = 1024
+  runtime          = "python3.11"
+  timeout          = 900 # 15 minutes max
+  memory_size      = 1024
 
 
   environment {
@@ -269,10 +269,10 @@ resource "aws_lambda_event_source_mapping" "sqs_trigger" {
   event_source_arn = aws_sqs_queue.processing_queue.arn
   function_name    = aws_lambda_function.worker_lambda.arn
   batch_size       = 10
-  
+
   # Enable partial batch response
   function_response_types = ["ReportBatchItemFailures"]
-  
+
   # Scale configuration
   scaling_config {
     maximum_concurrency = 100
@@ -283,7 +283,7 @@ resource "aws_lambda_event_source_mapping" "sqs_trigger" {
 resource "aws_apigatewayv2_api" "http_api" {
   name          = "${var.project_name}-api"
   protocol_type = "HTTP"
-  
+
   cors_configuration {
     allow_origins = ["*"]
     allow_methods = ["POST", "OPTIONS"]
@@ -293,9 +293,9 @@ resource "aws_apigatewayv2_api" "http_api" {
 
 # API Gateway Integration with Lambda
 resource "aws_apigatewayv2_integration" "lambda_integration" {
-  api_id           = aws_apigatewayv2_api.http_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.api_lambda.invoke_arn
+  api_id                 = aws_apigatewayv2_api.http_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.api_lambda.invoke_arn
   payload_format_version = "2.0"
 }
 
